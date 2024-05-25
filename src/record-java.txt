@@ -1,0 +1,244 @@
+Topic - 'record' feature in Java
+--------------------------------
+
+Record is a special purpose class in Java that is designed to provide an efficient and easy way for programmers to carry aggregate data.
+Due to the introduction of this specific class, a new, context-sensitive keyword called record has been added into the Java language.
+This programming tutorial illustrates the idea behind the Record class and record keyword, alongside code examples to understand their use in Java programming.
+
+Q. What is the Record Class in Java?
+A. While working on Java projects, we, as developers, often write service classes, security classes, or any other basic classes.
+These classes are functional by nature. Similarly, programmers often write classes for the sole purpose of carrying data.
+For instance, suppose, a client requests some data from the server such as an id and name of a person and
+the server responds back with the appropriate data. Since everything is an object in Java, there must be some class that carries the data.
+The server responds back with the object of the class to the client. Note that the sole purpose of the object is to carry the data from the server to the client.
+
+Now, writing such a data class, even if it may be a simple POJO, includes a lot of boilerplate code,
+such as private fields, constructors, getter and setter methods, hashCode(), equals(), and toString() methods.
+A simple carrier class becomes heavy with a lot of unnecessary code due to the verbose nature of the Java language.
+These downsides led to the introduction of a special type of class called record.
+This class aggregates – or holds – a group of values without having to write boilerplate code and acts as an efficient carrier of data objects.
+
+In fact, developers can manage everything without the record classes as we have been doing so long.
+The record class redefines data carrier classes to another level both in terms of convenience and efficiency.
+
+A simple POJO class we often use as a data carrier may contain a lot of boilerplate code. Here is a code example on creating such a class in Java:
+
+```
+package org.example;
+
+import java.util.Objects;
+
+public class Person {
+    private int id;
+    private String name;
+
+    public Person() {
+    }
+
+    public Person(int id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Person person = (Person) o;
+        return getId() == person.getId() && getName().equals(person.getName());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), getName());
+    }
+
+    @Override
+    public String toString() {
+        return "Person{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                '}';
+    }
+}
+```
+
+Q. How to Create a Record Class in Java?
+A. The Record class in Java is supported by the context sensitive keyword record. This keyword has no special meaning unless used with the record declaration.
+Typically, a record is declared in Java with the following syntax:
+
+```
+record recordName(list-of-components) {
+	//optional statements
+}
+```
+
+Note that the declaration is significantly different from a typical class declaration in Java.
+The declaration closely resembles a function that begins with the keyword record, followed by the record name.
+The parameters of this record class contain a comma separated list of components.
+This list of components designates the data that the record will hold.
+Also note that the body of the record is optional.
+
+Now, suppose a programmer wanted to create a record of the above person class – developers can declare the record with the following Java code example:
+
+```
+record Person(int id, String name){}
+```
+
+That’s it! And we are ready to create objects of this class as follows:
+
+```
+Person p1 = new Person(1,”Peter Parker”);
+```
+Behind the scenes, the compiler automatically provides the necessary elements to store data, constructors, getter methods to access data,
+toString(), equals(), and hashCode() methods without any intervention of the programmer. Therefore, the following is valid code,
+although we have explicitly written nothing of this sort:
+
+```
+// string representation of the person id and name
+System.out.println(p1.toString());
+// the name getter
+System.out.println(p1.name());
+```
+
+```
+package org.example;
+
+record Person(int id, String name){}
+public class App
+{
+    public static void main( String[] args )
+    {
+        Person p1 = new PersonRecord(1,"Peter Parker");
+        Person p2 = new PersonRecord(2,"Spiderman");
+        System.out.println(p1.toString());
+        System.out.println(p1.equals(p2));
+        System.out.println(p1.name());
+    }
+}
+```
+
+A few quick points to note about the above code example:
+
+The canonical constructor provided by the record class contains the same parameter passed as the list of components and in the same order.
+The values passed are automatically assigned to the record fields. A record is instantiated by the new keyword, just like creating any other objects in Java.
+The data in the record is held in private final fields and there is only a getter method. Therefore, data in the record is immutable.
+A record cannot inherit another class. However, all records implicitly inherit java.lang.Record.
+As such, it overrides equals(), hashCode(), toString() methods of the Object class.
+All record declarations are final, hence they cannot be extended. A record, however, can implement one or more interfaces.
+Any other fields, except the list of components, must be declared static.
+
+Q. What is Canonical Constructors in Java?
+
+A. A canonical constructor has a predefined form specific to the construct of the record class in Java.
+However, there are two ways to declare our own implementation. The first way to declare a canonical constructor in Java is to use the following code:
+
+```
+record Invoice(String id, float amount) {
+    static String prefix = String.valueOf(Calendar.getInstance().get(Calendar.YEAR))
+            +String.valueOf(Calendar.getInstance().get(Calendar.MONTH)+1);
+
+    public Invoice(String id, float amount){
+        this.id=prefix+id.trim();
+        this.amount=amount;
+    }
+}
+```
+
+Another way is to declare a compact constructor, where declaration of the signature is implicit.
+Here, we simply provide the record name as the constructor without any parameters.
+This type of constructor has implicit declaration of all the parameters – the same as the record component – and is automatically assigned to the values passed to the component of the record.
+Also, note that, in compact constructors, we do not use this keyword.
+
+```
+record Invoice(String id, float amount) {
+    static String prefix = String.valueOf(Calendar.getInstance().get(Calendar.YEAR))
+            +String.valueOf(Calendar.getInstance().get(Calendar.MONTH)+1);
+    public Invoice{
+        id=prefix+id.trim();
+        amount=amount;
+    }
+}
+```
+
+Q. What is Non-Canonical Constructors in Java?
+A. Although it is sufficient to have a canonical constructor, programmers can also declare a non-canonical constructor,
+where we might want to initialize only one value of the record field with default values. In such cases, developers might write a non-canonical constructor.
+The key requirement of a non-canonical constructor is that the constructor must call another constructor in the record through the this keyword.
+
+Here is a quick example:
+
+```
+record Invoice(String id, float amount) {
+    static String prefix = String.valueOf(Calendar.getInstance().get(Calendar.YEAR))
+            +String.valueOf(Calendar.getInstance().get(Calendar.MONTH)+1);
+    public Invoice{
+        id=prefix+id.trim();
+        amount=amount;
+    }
+
+    public Invoice(String id){
+        this(id,0.0f);
+    }
+}
+```
+
+Declaring a record with both a canonical constructor and non-canonical constructor is perfectly valid and there are no restrictions
+on the number of constructors a record can have, as long as it is designed according to the norms of the record.
+
+Java Record Class Code Example:
+Here is a quick code example showing how to use the Record class, canonical constructors, and non-canonical constructors in Java:
+
+```
+package org.example;
+
+record Invoice(String id, float amount) {
+    static String prefix = String.valueOf(Calendar.getInstance().get(Calendar.YEAR))
+            +String.valueOf(Calendar.getInstance().get(Calendar.MONTH)+1);
+    public Invoice{
+        id=prefix+id.trim();
+        if(amount<0)
+            throw new IllegalArgumentException("-ve values not allowed");
+        amount=amount;
+    }
+    public Invoice(String id){
+        this(id,0.0f);
+    }
+
+}
+public class App
+{
+    public static void main( String[] args )
+    {
+        float[] amt = {400.00f,600.00f,300.00f,700.00f,600.00f};
+        Invoice[] invoice = new Invoice[5];
+        for(int i=0;i<invoice.length;i++)
+            invoice[i] = new Invoice(String.valueOf(i+1), amt[i]);
+        for(int i=0;i<invoice.length;i++)
+            System.out.println(invoice[i].toString());
+    }
+}
+```
+
+Final Thoughts on the Java Record Class:
+Java’s Record class can have many innovative use cases, apart from being just a data carrier.
+The introduction of the keyword record that implicitly uses java.lang.Record class added another layer of convenience to it. After all,
+it is a convenient class specifically designed to be used as a data carrier that defies the verbosity of the POJO class declaration,
+as per Java language specifications. Developers can absolutely go without it and stick to the old ways of living.
+But the real impact of using the Record class can only be realized when you actually use it – as it is said: the proof of the pudding is in the eating.

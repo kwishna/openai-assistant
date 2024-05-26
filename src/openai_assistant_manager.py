@@ -205,3 +205,66 @@ class AssistantManager:
             )
         else:
             print("File creation failed for code interpreter: ", file_path)
+
+    def create_assistant(self):
+        assistant = self.client.beta.assistants.create(
+            model=self.model_name,
+            temperature=self.temperature,
+            instructions=ASSISTANT_INSTRUCTION,
+            tools=self.tools,
+            tool_resources=self.tools_resources
+        )
+        self.assistant_id = assistant.id
+
+    def create_run(self):
+        run = self.client.beta.threads.runs.create_and_poll(
+            thread_id=self.thread_id,
+            assistant_id=self.assistant_id,
+            instructions="Please answer the question is simpler english with an example."
+        )
+        self.run_id = run.id
+
+        if run.status == 'completed':
+            messages = self.client.beta.threads.messages.list(thread_id=self.thread_id)
+            print(messages)
+            return messages.data[0].content[0].text.value
+
+        else:
+            print(run.status)
+
+    def get_run(self):
+        run = self.client.beta.threads.runs.retrieve(self.run_id, thread_id=self.thread_id)
+        return run
+
+    def print_all_messages_in_thread(self):
+        messages = self.client.beta.threads.messages.list(thread_id=self.thread_id)
+        print(messages)
+
+    def submit_tool(self):
+        run = self.get_run()
+        tool_calls = run.required_action.submit_tool_outputs.tool_calls
+
+        tool_outputs: [{"output": str, "tool_call_id": str}] = []
+
+        for tool in tool_calls:
+            output = None
+            tool_call_id = tool.id
+            function_name = tool.function.name
+            function_arguments = tool.function.arguments
+
+            if function_name is 'tavilySearch':
+                output = tavilySearch(json.loads(function_arguments).query)
+
+            if output:
+                tool_outputs.append({"tool_call_id": tool_call_id, "output": output})
+
+        response = self.client.beta.threads.runs.submit_tool_outputs_and_poll(
+            run_id=self.run_id,
+            thread_id=self.thread_id,
+            tool_outputs=tool_outputs
+        )
+
+        run = self.client.beta.threads.runs.submit_tool_outputs_and_poll( run_id=self.run_id, thread_id=self.thread_id)
+        return run.status
+
+

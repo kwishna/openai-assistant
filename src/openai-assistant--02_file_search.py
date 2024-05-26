@@ -34,7 +34,7 @@ print("Assistant ID: ", ASSISTANT_ID)
 ##
 ## tool_resources={
 ##     "file_search": {
-##         "vector_store_ids": ["vs_1234567890"], # Optional
+##        "vector_store_ids": ["vs_1234567890"], # Optional
 ##        "vector_stores": {                     # Optional
 ##             "file_ids": ["file_1234567890"],
 ##             "metadata": {

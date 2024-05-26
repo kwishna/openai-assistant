@@ -1,6 +1,6 @@
 import json
 import os
-from typing import BinaryIO, Literal, Iterable, List
+from typing import Literal, Iterable, List
 
 import dotenv
 from openai import OpenAI
@@ -55,27 +55,20 @@ class AssistantManager:
 
     @staticmethod
     def _read_file(file_path: str):
-        _file: BinaryIO = None
-
         try:
             with open(file_path, 'rb') as f:
-                _file = f
+                return f
 
         except FileNotFoundError:
             print(f"File not found: {file_path}")
 
-        return _file
-
     def create_file_in_openai(self, file_path: str):
         _file = self._read_file(file_path)
-        _upload_file_response = None
 
         if _file is not None:
-            _upload_file_response = self.client.files.create(file=_file, purpose="assistants")
+            return self.client.files.create(file=_file, purpose="assistants")
         else:
             print("File not uploaded to openai: ", file_path)
-
-        return _upload_file_response
 
     def __create_file_in_openai_for_code_interpreter(self, file_path: str) -> None:
         upload_file_response = self.create_file_in_openai(file_path)
@@ -124,35 +117,37 @@ class AssistantManager:
     def add_text_to_message_in_thread(self,
                                       role: Literal["user", "assistant"],
                                       msg: str):
-        self.client.beta.threads.messages.create(
-            role=role,
-            content=[{"type": "text", "text": msg}],
-            thread_id=self.thread_id
-        )
+        if self.thread_id:
+            self.client.beta.threads.messages.create(
+                role=role,
+                content=[{"type": "text", "text": msg}],
+                thread_id=self.thread_id
+            )
 
     def add_image_url_to_message_in_thread(self,
                                            role: Literal["user", "assistant"],
                                            url: str):
-        self.client.beta.threads.messages.create(
-            role=role,
-            content=[{"type": "image_url", "image_url": {"url": url}}],
-            thread_id=self.thread_id
-        )
+        if self.thread_id:
+            self.client.beta.threads.messages.create(
+                role=role,
+                content=[{"type": "image_url", "image_url": {"url": url}}],
+                thread_id=self.thread_id
+            )
 
     def add_image_data_to_message_in_thread(self,
                                             role: Literal["user", "assistant"],
                                             image_file_path: str):
+        if self.thread_id:
+            _upload_file_response = self.create_file_in_openai(file_path=image_file_path)
 
-        _upload_file_response = self.create_file_in_openai(file_path=image_file_path)
-
-        if _upload_file_response is not None:
-            self.client.beta.threads.messages.create(
-                role=role,
-                content=[{"type": "image_file", "image_file": {"file_id": _upload_file_response.id}}],
-                thread_id=self.thread_id
-            )
-        else:
-            print("File creation failed for image: ", image_file_path)
+            if _upload_file_response is not None:
+                self.client.beta.threads.messages.create(
+                    role=role,
+                    content=[{"type": "image_file", "image_file": {"file_id": _upload_file_response.id}}],
+                    thread_id=self.thread_id
+                )
+            else:
+                print("File creation failed for image: ", image_file_path)
 
     def add_message_in_thread_with_attachment_for_file_search(
             self,
@@ -160,25 +155,25 @@ class AssistantManager:
             role: Literal["user", "assistant"],
             content: Iterable[MessageContentPartParam]
     ):
+        if self.thread_id:
+            upload_file_response = self.create_file_in_openai(file_path)
 
-        upload_file_response = self.create_file_in_openai(file_path)
-
-        if upload_file_response is not None:
-            self.client.beta.threads.messages.create(
-                role=role,
-                content=content,
-                thread_id=self.thread_id,
-                attachments=[{
-                    "file_id": upload_file_response.id,
-                    "tools": [
-                        {
-                            "type": "file_search"
-                        }
-                    ]
-                }],
-            )
-        else:
-            print("File creation failed for data search: ", file_path)
+            if upload_file_response is not None:
+                self.client.beta.threads.messages.create(
+                    role=role,
+                    content=content,
+                    thread_id=self.thread_id,
+                    attachments=[{
+                        "file_id": upload_file_response.id,
+                        "tools": [
+                            {
+                                "type": "file_search"
+                            }
+                        ]
+                    }],
+                )
+            else:
+                print("File creation failed for data search: ", file_path)
 
     def add_message_in_thread_with_attachment_for_code_interpreter(
             self,
@@ -189,7 +184,7 @@ class AssistantManager:
 
         upload_file_response = self.create_file_in_openai(file_path)
 
-        if upload_file_response is not None:
+        if upload_file_response is not None and self.thread_id:
             self.client.beta.threads.messages.create(
                 role=role,
                 content=content,
@@ -217,28 +212,31 @@ class AssistantManager:
         self.assistant_id = assistant.id
 
     def create_run(self):
-        run = self.client.beta.threads.runs.create_and_poll(
-            thread_id=self.thread_id,
-            assistant_id=self.assistant_id,
-            instructions="Please answer the question is simpler english with an example."
-        )
-        self.run_id = run.id
+        if self.thread_id and self.assistant_id:
+            run = self.client.beta.threads.runs.create_and_poll(
+                thread_id=self.thread_id,
+                assistant_id=self.assistant_id,
+                instructions="Please answer the question is simpler english with an example."
+            )
+            self.run_id = run.id
 
-        if run.status == 'completed':
-            messages = self.client.beta.threads.messages.list(thread_id=self.thread_id)
-            print(messages)
-            return messages.data[0].content[0].text.value
+            if run.status == 'completed':
+                messages = self.client.beta.threads.messages.list(thread_id=self.thread_id)
+                print(messages)
+                return messages.data[0].content[0].text.value
 
-        else:
-            print(run.status)
+            else:
+                print(run.status)
 
     def get_run(self):
-        run = self.client.beta.threads.runs.retrieve(self.run_id, thread_id=self.thread_id)
-        return run
+        if self.thread_id and self.assistant_id:
+            run = self.client.beta.threads.runs.retrieve(self.run_id, thread_id=self.thread_id)
+            return run
 
     def print_all_messages_in_thread(self):
-        messages = self.client.beta.threads.messages.list(thread_id=self.thread_id)
-        print(messages)
+        if self.thread_id:
+            messages = self.client.beta.threads.messages.list(thread_id=self.thread_id)
+            print(messages)
 
     def submit_tool(self):
         run = self.get_run()

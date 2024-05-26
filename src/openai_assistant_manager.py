@@ -89,7 +89,13 @@ class AssistantManager:
     def __create_vector_store_in_openai(self, file_path: str):
         self.__create_file_in_openai_for_search(file_path)
 
-        vector_store = self.client.beta.vector_stores.create(file_ids=self.file_ids_for_search)
+        vector_store = self.client.beta.vector_stores.create(
+            file_ids=self.file_ids_for_search,
+            expires_after={
+                "anchor": "last_active_at",
+                "days": 7
+            }
+        )
         self.vector_store_ids.append(vector_store.id)
 
     def add_file_for_code_interpreter(self, file_path: str):
@@ -262,7 +268,29 @@ class AssistantManager:
             tool_outputs=tool_outputs
         )
 
-        run = self.client.beta.threads.runs.submit_tool_outputs_and_poll( run_id=self.run_id, thread_id=self.thread_id)
+        run = self.client.beta.threads.runs.submit_tool_outputs_and_poll(run_id=self.run_id, thread_id=self.thread_id)
         return run.status
 
+    def store_files_batch_to_vector_store(self, file_paths: List[str]):
+        vector_store = self.client.beta.vector_stores.create()
 
+        file_streams = [open(path, "rb") for path in file_paths]
+
+        self.client.beta.vector_stores.file_batches.upload_and_poll(
+            vector_store_id=vector_store.id, files=file_streams,
+        )
+
+        self.vector_store_ids.append(vector_store.id)
+
+    def update_assistant_with_vector_store_id(self):
+        self.client.beta.assistants.update(
+            assistant_id=self.assistant_id,
+            tool_resources={"file_search": {"vector_store_ids": self.vector_store_ids}},
+        )
+
+    def add_vector_store_to_thread(self):
+        vector_store = self.client.beta.vector_stores.create()
+        self.client.beta.threads.update(
+            thread_id=self.thread_id,
+            tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
+        )

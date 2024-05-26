@@ -1,6 +1,6 @@
 import dotenv
 import openai
-
+# from openai import AssistantEventHandler
 dotenv.load_dotenv()
 
 """
